@@ -1,13 +1,41 @@
 import React, { useEffect, useState } from 'react'
-import { useResource } from "./useResource";
 import axios from 'axios';
-import {Input, Button, Select, Container, HStack, TableContainer, Table, Thead, Tfoot, TableCaption, Tr, Td, Th, Tbody } from '@chakra-ui/react';
+import { Button, Select, Container, HStack, TableContainer, Table, Thead, TableCaption, Tr, Td, Th, Tbody } from '@chakra-ui/react';
+
+import { IconButton, useEditableControls, ButtonGroup, } from "@chakra-ui/react";
+import { EditIcon, CheckIcon, CloseIcon } from "@chakra-ui/icons";
+
+import {
+	NumberInput,
+	NumberInputField
+} from '@chakra-ui/react'
+
+function EditableControls() {
+	const {
+		isEditing,
+		getSubmitButtonProps,
+		getCancelButtonProps,
+		getEditButtonProps,
+	} = useEditableControls()
+
+	return isEditing ? (
+		<ButtonGroup size='xs'>
+			<IconButton icon={<CheckIcon />} {...getSubmitButtonProps()} />
+			<IconButton icon={<CloseIcon />} {...getCancelButtonProps()} />
+		</ButtonGroup>
+	) : (
+		<IconButton size='xs' m={2} icon={<EditIcon />} {...getEditButtonProps()} />
+	)
+}
+
 
 const DashPresupuesto = () => {
 	const [list, setList] = useState([])
 	const [cabpre, setCabpre] = useState([])
 	const [detpre, setDetpre] = useState([])
 	const [iddet, setIddet] = useState()
+	const [cambios, setCambios] = useState()
+	const [valores, setValores] = useState()
 
 	useEffect(() => {
 		axios.get('http://localhost:3000/api/entity/tipoPresupuesto')
@@ -27,6 +55,34 @@ const DashPresupuesto = () => {
 			axios.get('http://localhost:3000/api/entity/detPresupuesto?idcab=' + iddet)
 				.then((response) => { setDetpre(response.data) })
 				.catch(error => setDetpre([]))
+		}
+	}
+
+	function actualizarDetPresupuesto(obj) {
+		console.log('actualizando')
+		axios.put('http://localhost:3000/api/entity/detPresupuesto', obj)			
+			.catch(error => console.log("error"))
+	}
+
+	const handleBlur = (e, id) => {
+		e.preventDefault()
+		if (e.target.value) {
+			setCambios({ id, monto: e.target.value })
+		}
+	}
+
+	const handleFocus = (e, id) => {
+		e.preventDefault()
+		e.target.select()
+		if (e.target.value) {
+			setValores({ id, monto: e.target.value })
+		}
+		if (cambios && e.target.value !== cambios.monto) {
+			if (valores.id !== cambios.id || valores.monto !== cambios.monto) {
+				console.log(cambios)
+				actualizarDetPresupuesto(cambios)
+				setCambios(null)
+			}
 		}
 	}
 
@@ -65,7 +121,15 @@ const DashPresupuesto = () => {
 									<Td>{item.id}</Td>
 									<Td>{item.cuenta}</Td>
 									<Td>{item.descripcion}</Td>
-									{item.hijo===1? <Td> <Input htmlSize={4} width='auto' />{item.monto}</Td>:<Td isNumeric>{item.monto}</Td>}
+									{item.hijo === 1 ? <Td >
+										{/* Here is the custom input */}
+										<NumberInput defaultValue={String(item.monto)} precision={2} step={0.2} >
+											<NumberInputField textAlign="right"
+												onFocus={(e) => handleFocus(e, item.id)}
+												onBlur={(e) => handleBlur(e, item.id)}
+											/>
+										</NumberInput >
+									</Td> : null}
 								</Tr>
 							))}
 						</Tbody>
@@ -73,8 +137,7 @@ const DashPresupuesto = () => {
 				</TableContainer>
 			</Container>
 		</>
-	);
-
+	)
 }
 
 export default DashPresupuesto
